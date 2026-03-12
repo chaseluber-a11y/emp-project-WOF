@@ -5,561 +5,260 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EMP WOF — Wheel Screen</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 <style>
-  :root {
-    --gold: #FFD700;
-    --gold2: #c8960c;
-    --bg: #05080f;
-    --panel: #0b1220;
-    --border: #1a2e50;
-    --cyan: #00e5ff;
-    --green: #00e676;
-    --blue1: #4488ff;
-    --blue2: #ff5577;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
-
-  body {
-    font-family: 'Barlow Condensed', sans-serif;
-    background: var(--bg);
-    color: #e8f0ff;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background-image:
-      radial-gradient(ellipse at 50% 40%, rgba(0,60,160,0.18) 0%, transparent 65%),
-      radial-gradient(ellipse at 80% 90%, rgba(255,200,0,0.07) 0%, transparent 45%);
-  }
-
-  /* HEADER */
-  .header {
-    text-align: center;
-    padding: 12px 20px 6px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    background: rgba(0,0,0,0.5);
-    position: relative;
-  }
-  .eyebrow {
-    font-size: 11px; letter-spacing: 6px; color: var(--gold2);
-    text-transform: uppercase; margin-bottom: 2px;
-  }
-  .header h1 {
-    font-family: 'Bebas Neue', cursive;
-    font-size: clamp(32px, 4.5vw, 60px);
-    letter-spacing: 7px;
-    color: var(--gold);
-    text-shadow: 0 0 40px rgba(255,215,0,0.45), 0 3px 0 #6a4800;
-    line-height: 1;
-  }
-  .screen-badge {
-    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-    background: rgba(0,100,255,0.15);
-    border: 1px solid var(--blue1);
-    color: var(--blue1);
-    font-size: 11px; letter-spacing: 3px;
-    padding: 4px 10px; border-radius: 4px;
-  }
-
-  /* WHEEL AREA */
-  .wheel-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 10px;
-    position: relative;
-  }
-
-  .wheel-wrapper {
-    position: relative;
-    width: min(55vh, 500px);
-    height: min(55vh, 500px);
-  }
-  .pointer {
-    position: absolute;
-    top: -20px; left: 50%; transform: translateX(-50%);
-    width: 0; height: 0;
-    border-left: 18px solid transparent;
-    border-right: 18px solid transparent;
-    border-top: 36px solid var(--gold);
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.7));
-    z-index: 10;
-  }
-  #wheelCanvas {
-    width: 100%; height: 100%;
-    border-radius: 50%;
-    box-shadow:
-      0 0 0 8px var(--gold2),
-      0 0 0 14px #1e1400,
-      0 0 60px rgba(255,215,0,0.2);
-    display: block;
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-  #wheelCanvas:hover { transform: scale(1.01); }
-
-  /* SPIN RESULT */
-  .spin-result-wrap {
-    text-align: center;
-  }
-  .spin-result-label {
-    font-size: 11px; letter-spacing: 5px; color: #334466; text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  .spin-result {
-    font-family: 'Bebas Neue', cursive;
-    font-size: clamp(32px, 4vw, 54px);
-    letter-spacing: 5px;
-    color: var(--gold);
-    text-shadow: 0 0 24px rgba(255,215,0,0.5);
-    min-height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* SPIN BUTTON */
-  .spin-btn {
-    background: linear-gradient(135deg, var(--gold) 0%, #d4940a 100%);
-    color: #000;
-    border: none;
-    border-radius: 10px;
-    padding: 16px 60px;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 32px;
-    letter-spacing: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 6px 24px rgba(255,215,0,0.3);
-  }
-  .spin-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(255,215,0,0.4); }
-  .spin-btn:active { transform: translateY(0); }
-  .spin-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
-
-  /* SCOREBOARD */
-  .scoreboard {
-    flex-shrink: 0;
-    display: flex;
-    border-top: 2px solid var(--border);
-    background: rgba(0,0,0,0.6);
-  }
-
-  .team-block {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 28px;
-    position: relative;
-    transition: background 0.3s;
-  }
-  .team-block.active {
-    background: rgba(255,215,0,0.05);
-  }
-  .team-block::after {
-    content: ''; position: absolute;
-    top: 0; left: 0; right: 0; height: 3px;
-    background: transparent; transition: 0.3s;
-  }
-  .team-block.active::after { background: var(--gold); }
-
-  .team-stripe {
-    width: 6px; height: 58px; border-radius: 3px; flex-shrink: 0;
-  }
-  .s1 { background: linear-gradient(180deg, var(--blue1), #2244cc); }
-  .s2 { background: linear-gradient(180deg, var(--blue2), #cc2244); }
-
-  .team-data { flex: 1; }
-  .team-name-row {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 3px;
-  }
-  .team-name {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 24px; letter-spacing: 3px;
-  }
-  .t1n { color: var(--blue1); }
-  .t2n { color: var(--blue2); }
-
-  .turn-pill {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 12px; letter-spacing: 3px;
-    background: var(--gold); color: #000;
-    padding: 3px 9px; border-radius: 4px;
-    animation: pulseG 1.2s infinite;
-    display: none;
-  }
-  .active .turn-pill { display: inline-block; }
-  @keyframes pulseG { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-  .team-total {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 44px; line-height: 1;
-    color: var(--gold);
-    text-shadow: 0 0 14px rgba(255,215,0,0.35);
-  }
-  .team-round {
-    font-size: 14px; color: #3a5577; letter-spacing: 1px;
-  }
-  .team-round span { color: var(--green); }
-
-  .score-divider { width: 1px; background: var(--border); align-self: stretch; }
-
-  .bank-btn {
-    background: rgba(0,230,118,0.12);
-    border: 1px solid rgba(0,230,118,0.4);
-    color: var(--green);
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 15px; letter-spacing: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .bank-btn:hover { background: rgba(0,230,118,0.22); }
-
-  /* BANKRUPT flash */
-  @keyframes bkFlash { 0%,100%{background:#ff2200} 50%{background:#fff200} }
-  .bankrupt-flash { animation: bkFlash 0.25s 8; }
-
-  /* Current spin value display */
-  .spin-value-display {
-    position: absolute;
-    top: 12px; left: 50%; transform: translateX(-50%);
-    font-family: 'Bebas Neue', cursive;
-    font-size: 16px; letter-spacing: 3px;
-    color: #334466;
-    background: rgba(0,0,0,0.4);
-    border: 1px solid var(--border);
-    padding: 4px 14px; border-radius: 20px;
-  }
-  .fullscreen-btn {
-    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-    background: rgba(255,255,255,0.07);
-    border: 1px solid var(--border);
-    color: #aabbcc;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 13px; letter-spacing: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .fullscreen-btn:hover { background: rgba(255,255,255,0.14); color: #fff; border-color: var(--cyan); }
+  :root{--gold:#FFD700;--gold2:#c8960c;--bg:#05080f;--panel:#0b1220;--border:#1a2e50;--cyan:#00e5ff;--green:#00e676;--blue1:#4488ff;--blue2:#ff5577}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:'Barlow Condensed',sans-serif;background:var(--bg);color:#e8f0ff;display:flex;flex-direction:column;height:100vh;background-image:radial-gradient(ellipse at 50% 40%,rgba(0,60,160,0.18) 0%,transparent 65%),radial-gradient(ellipse at 80% 90%,rgba(255,200,0,0.07) 0%,transparent 45%)}
+  .header{text-align:center;padding:12px 20px 6px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(0,0,0,0.5);position:relative}
+  .eyebrow{font-size:11px;letter-spacing:6px;color:var(--gold2);text-transform:uppercase;margin-bottom:2px}
+  .header h1{font-family:'Bebas Neue',cursive;font-size:clamp(32px,4.5vw,60px);letter-spacing:7px;color:var(--gold);text-shadow:0 0 40px rgba(255,215,0,0.45),0 3px 0 #6a4800;line-height:1}
+  .screen-badge{position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(0,100,255,0.15);border:1px solid var(--blue1);color:var(--blue1);font-size:11px;letter-spacing:3px;padding:4px 10px;border-radius:4px}
+  .fullscreen-btn{position:absolute;left:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.07);border:1px solid var(--border);color:#aabbcc;border-radius:6px;padding:6px 12px;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;cursor:pointer;transition:all 0.15s}
+  .fullscreen-btn:hover{background:rgba(255,255,255,0.14);color:#fff;border-color:var(--cyan)}
+  .wheel-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:10px;position:relative}
+  .wheel-wrapper{position:relative;width:min(55vh,500px);height:min(55vh,500px)}
+  .pointer{position:absolute;top:-20px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:36px solid var(--gold);filter:drop-shadow(0 4px 8px rgba(0,0,0,0.7));z-index:10}
+  #wheelCanvas{width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 8px var(--gold2),0 0 0 14px #1e1400,0 0 60px rgba(255,215,0,0.2);display:block}
+  .spin-result-wrap{text-align:center}
+  .spin-result-label{font-size:11px;letter-spacing:5px;color:#334466;text-transform:uppercase;margin-bottom:4px}
+  .spin-result{font-family:'Bebas Neue',cursive;font-size:clamp(32px,4vw,54px);letter-spacing:5px;color:var(--gold);text-shadow:0 0 24px rgba(255,215,0,0.5);min-height:56px;display:flex;align-items:center;justify-content:center}
+  .spin-value-display{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:3px;color:#334466;background:rgba(0,0,0,0.4);border:1px solid var(--border);padding:4px 14px;border-radius:20px}
+  .scoreboard{flex-shrink:0;display:flex;border-top:2px solid var(--border);background:rgba(0,0,0,0.6)}
+  .team-block{flex:1;display:flex;align-items:center;gap:14px;padding:14px 28px;position:relative;transition:background 0.3s}
+  .team-block.active{background:rgba(255,215,0,0.05)}
+  .team-block::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:transparent;transition:0.3s}
+  .team-block.active::after{background:var(--gold)}
+  .team-stripe{width:6px;height:58px;border-radius:3px;flex-shrink:0}
+  .s1{background:linear-gradient(180deg,var(--blue1),#2244cc)}
+  .s2{background:linear-gradient(180deg,var(--blue2),#cc2244)}
+  .team-data{flex:1}
+  .team-name-row{display:flex;align-items:center;gap:10px;margin-bottom:3px}
+  .team-name{font-family:'Bebas Neue',cursive;font-size:24px;letter-spacing:3px}
+  .t1n{color:var(--blue1)}.t2n{color:var(--blue2)}
+  .turn-pill{font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:3px;background:var(--gold);color:#000;padding:3px 9px;border-radius:4px;animation:pulseG 1.2s infinite;display:none}
+  .active .turn-pill{display:inline-block}
+  @keyframes pulseG{0%,100%{opacity:1}50%{opacity:0.5}}
+  .team-total{font-family:'Bebas Neue',cursive;font-size:44px;line-height:1;color:var(--gold);text-shadow:0 0 14px rgba(255,215,0,0.35)}
+  .team-round{font-size:14px;color:#3a5577;letter-spacing:1px}
+  .team-round span{color:var(--green)}
+  .score-divider{width:1px;background:var(--border);align-self:stretch}
+  .bank-btn{background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.4);color:var(--green);border-radius:6px;padding:8px 16px;font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;cursor:pointer;transition:all 0.15s}
+  .bank-btn:hover{background:rgba(0,230,118,0.22)}
+  @keyframes bkFlash{0%,100%{background:#ff2200}50%{background:#fff200}}
+  .bankrupt-flash{animation:bkFlash 0.25s 8}
 </style>
 </head>
 <body>
-
 <div class="header">
+  <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
   <div class="eyebrow">⚡ Life.Church EMP Training ⚡</div>
   <h1>WHEEL OF FORTUNE</h1>
   <div class="screen-badge">SCREEN 2 — WHEEL</div>
-  <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
 </div>
-
 <div class="wheel-area">
-  <div class="spin-value-display" id="spinValueDisplay">SPIN THE WHEEL</div>
-
+  <div class="spin-value-display" id="spinValueDisplay">WAITING FOR HOST…</div>
   <div class="wheel-wrapper">
     <div class="pointer"></div>
     <canvas id="wheelCanvas" width="600" height="600"></canvas>
   </div>
-
   <div class="spin-result-wrap">
     <div class="spin-result-label">Landed on</div>
     <div class="spin-result" id="spinResult">— —</div>
   </div>
 </div>
-
 <div class="scoreboard">
   <div class="team-block active" id="tb1">
     <div class="team-stripe s1"></div>
     <div class="team-data">
-      <div class="team-name-row">
-        <span class="team-name t1n">Team 1</span>
-        <span class="turn-pill">THEIR TURN</span>
-      </div>
+      <div class="team-name-row"><span class="team-name t1n">Team 1</span><span class="turn-pill">THEIR TURN</span></div>
       <div class="team-total" id="t1total">$0</div>
       <div class="team-round">Round: <span id="t1round">$0</span></div>
     </div>
     <button class="bank-btn" onclick="bankRound(1)">✓ Bank</button>
   </div>
-
   <div class="score-divider"></div>
-
   <div class="team-block" id="tb2">
     <div class="team-stripe s2"></div>
     <div class="team-data">
-      <div class="team-name-row">
-        <span class="team-name t2n">Team 2</span>
-        <span class="turn-pill">THEIR TURN</span>
-      </div>
+      <div class="team-name-row"><span class="team-name t2n">Team 2</span><span class="turn-pill">THEIR TURN</span></div>
       <div class="team-total" id="t2total">$0</div>
       <div class="team-round">Round: <span id="t2round">$0</span></div>
     </div>
     <button class="bank-btn" onclick="bankRound(2)">✓ Bank</button>
   </div>
 </div>
-
 <script>
 // ============================================================
-// WHEEL SEGMENTS
+// ⚠️  PASTE YOUR ABLY ROOT API KEY BETWEEN THE QUOTES BELOW
 // ============================================================
+const ABLY_KEY = 'leOFKA.nbOkGA:CknTFn0f2ehAmi88tbNF0Hj5wY_ld-XuxHnOjbKkYTg';
+
 const SEGS = [
-  { label:'$500',    value:500,  color:'#1a237e' },
-  { label:'LOSE\nTURN', value:0, color:'#7f0000', special:'lose' },
-  { label:'$900',    value:900,  color:'#1b5e20' },
-  { label:'$300',    value:300,  color:'#4a148c' },
-  { label:'BANKRUPT',value:0,   color:'#0d0d0d', special:'bankrupt' },
-  { label:'$700',    value:700,  color:'#0d47a1' },
-  { label:'$400',    value:400,  color:'#880e4f' },
-  { label:'$1000',   value:1000, color:'#004d40' },
-  { label:'$250',    value:250,  color:'#bf360c' },
-  { label:'$600',    value:600,  color:'#1565c0' },
-  { label:'LOSE\nTURN', value:0, color:'#7f0000', special:'lose' },
-  { label:'$800',    value:800,  color:'#2e7d32' },
-  { label:'$350',    value:350,  color:'#6a1b9a' },
-  { label:'FREE\nSPIN',value:500,color:'#e65100', special:'free' },
-  { label:'$550',    value:550,  color:'#283593' },
-  { label:'$1500',   value:1500, color:'#880e4f' },
+  {label:'$500',   value:500, color:'#1a237e'},
+  {label:'LOSE\nTURN',value:0,color:'#7f0000',special:'lose'},
+  {label:'$900',   value:900, color:'#1b5e20'},
+  {label:'$300',   value:300, color:'#4a148c'},
+  {label:'BANKRUPT',value:0, color:'#0d0d0d',special:'bankrupt'},
+  {label:'$700',   value:700, color:'#0d47a1'},
+  {label:'$400',   value:400, color:'#880e4f'},
+  {label:'$1000',  value:1000,color:'#004d40'},
+  {label:'$250',   value:250, color:'#bf360c'},
+  {label:'$600',   value:600, color:'#1565c0'},
+  {label:'LOSE\nTURN',value:0,color:'#7f0000',special:'lose'},
+  {label:'$800',   value:800, color:'#2e7d32'},
+  {label:'$350',   value:350, color:'#6a1b9a'},
+  {label:'FREE\nSPIN',value:500,color:'#e65100',special:'free'},
+  {label:'$550',   value:550, color:'#283593'},
+  {label:'$1500',  value:1500,color:'#880e4f'},
 ];
 const N = SEGS.length;
-const SEG_ANG = (2 * Math.PI) / N;
+const SEG_ANG = (2*Math.PI)/N;
 
-let wheelAngle = 0;
-let spinning = false;
-let currentTeam = 1;
-let localState = {};
+let wheelAngle = 0, spinning = false, currentTeam = 1;
+let channel, cachedState = {};
 
-// ============================================================
-// DRAW WHEEL
-// ============================================================
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
 
 function drawWheel(rot) {
-  const W = canvas.width, cx = W/2, cy = W/2, r = cx - 10;
-  ctx.clearRect(0, 0, W, W);
-
-  // Outer rim glow
-  ctx.beginPath(); ctx.arc(cx,cy,r+8,0,2*Math.PI);
-  const rimGrad = ctx.createRadialGradient(cx,cy,r,cx,cy,r+8);
-  rimGrad.addColorStop(0,'#FFD700'); rimGrad.addColorStop(1,'#7a5c00');
-  ctx.fillStyle = rimGrad; ctx.fill();
-
-  SEGS.forEach((seg, i) => {
-    const a0 = rot + i * SEG_ANG - Math.PI/2;
-    const a1 = a0 + SEG_ANG;
-
-    // Segment fill
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a1); ctx.closePath();
-    ctx.fillStyle = seg.color; ctx.fill();
-
-    // Subtle inner lighter edge
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // Label
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a0 + SEG_ANG/2);
-    ctx.textAlign = 'right';
-    ctx.shadowColor='rgba(0,0,0,0.9)'; ctx.shadowBlur=6;
-    const lines = seg.label.split('\n');
-    const fs = seg.label.replace('\n','').length > 7 ? 15 : 20;
-    ctx.font = `bold ${fs}px 'Barlow Condensed', sans-serif`;
-    ctx.fillStyle = '#fff';
-    lines.forEach((ln, li) => {
-      ctx.fillText(ln, r - 14, (li - (lines.length-1)/2) * 20 + 3);
-    });
+  const W=canvas.width,cx=W/2,cy=W/2,r=cx-10;
+  ctx.clearRect(0,0,W,W);
+  ctx.beginPath();ctx.arc(cx,cy,r+8,0,2*Math.PI);
+  const rg=ctx.createRadialGradient(cx,cy,r,cx,cy,r+8);
+  rg.addColorStop(0,'#FFD700');rg.addColorStop(1,'#7a5c00');
+  ctx.fillStyle=rg;ctx.fill();
+  SEGS.forEach((seg,i) => {
+    const a0=rot+i*SEG_ANG-Math.PI/2, a1=a0+SEG_ANG;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a0,a1);ctx.closePath();
+    ctx.fillStyle=seg.color;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(a0+SEG_ANG/2);
+    ctx.textAlign='right';ctx.shadowColor='rgba(0,0,0,0.9)';ctx.shadowBlur=6;
+    const lines=seg.label.split('\n');
+    const fs=seg.label.replace('\n','').length>7?15:20;
+    ctx.font=`bold ${fs}px 'Barlow Condensed',sans-serif`;ctx.fillStyle='#fff';
+    lines.forEach((ln,li) => { ctx.fillText(ln,r-14,(li-(lines.length-1)/2)*20+3); });
     ctx.restore();
   });
-
-  // Center hub
-  const hg = ctx.createRadialGradient(cx,cy,0,cx,cy,36);
-  hg.addColorStop(0,'#FFD700'); hg.addColorStop(1,'#7a5c00');
-  ctx.beginPath(); ctx.arc(cx,cy,34,0,2*Math.PI);
-  ctx.fillStyle=hg; ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=2.5; ctx.stroke();
-  ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.shadowBlur=0; ctx.fillStyle='#000';
+  const hg=ctx.createRadialGradient(cx,cy,0,cx,cy,36);
+  hg.addColorStop(0,'#FFD700');hg.addColorStop(1,'#7a5c00');
+  ctx.beginPath();ctx.arc(cx,cy,34,0,2*Math.PI);ctx.fillStyle=hg;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=2.5;ctx.stroke();
+  ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=0;ctx.fillStyle='#000';
   ctx.fillText('⚡',cx,cy);
 }
 drawWheel(0);
 
-// ============================================================
-// SPIN
-// ============================================================
 function spinWheel() {
   if (spinning) return;
   spinning = true;
-
-  const extra = (5 + Math.random() * 6) * 2 * Math.PI;
-  const dur = 3500 + Math.random() * 2000;
-  const startAngle = wheelAngle;
-  const t0 = performance.now();
-
+  const extra=(5+Math.random()*6)*2*Math.PI;
+  const dur=3500+Math.random()*2000;
+  const startAngle=wheelAngle, t0=performance.now();
   function frame(now) {
-    const p = Math.min((now - t0) / dur, 1);
-    const ease = 1 - Math.pow(1 - p, 3);
-    drawWheel(startAngle + extra * ease);
-    if (p < 1) {
-      requestAnimationFrame(frame);
-    } else {
-      wheelAngle = (startAngle + extra) % (2 * Math.PI);
-      spinning = false;
-      land(wheelAngle);
-    }
+    const p=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-p,3);
+    drawWheel(startAngle+extra*ease);
+    if (p<1) { requestAnimationFrame(frame); }
+    else { wheelAngle=(startAngle+extra)%(2*Math.PI); spinning=false; land(wheelAngle); }
   }
   requestAnimationFrame(frame);
 }
 
 function land(angle) {
-  const norm = ((-angle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
-  const idx = Math.floor(norm / SEG_ANG) % N;
-  const seg = SEGS[idx];
-  const label = seg.label.replace('\n',' ');
-  document.getElementById('spinResult').textContent = label;
+  const norm=((-angle%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  const idx=Math.floor(norm/SEG_ANG)%N;
+  const seg=SEGS[idx];
+  const label=seg.label.replace('\n',' ');
+  document.getElementById('spinResult').textContent=label;
 
-  // Read current shared state so we can patch it directly
-  let state = {};
-  try { state = JSON.parse(localStorage.getItem('empWOF') || '{}'); } catch(_) {}
+  let update = {};
 
-  if (seg.special === 'bankrupt') {
+  if (seg.special==='bankrupt') {
     document.getElementById('spinResult').classList.add('bankrupt-flash');
-    setTimeout(()=>document.getElementById('spinResult').classList.remove('bankrupt-flash'), 2500);
-    document.getElementById('spinValueDisplay').textContent = 'BANKRUPT!';
-    state[`t${currentTeam}round`] = 0;
-    state.spinValue = 0;
-    state.canGuess = false;
-    state.status = `💥 BANKRUPT! Team ${currentTeam} loses all round winnings. Turn passes!`;
-    state.ts = Date.now();
-    localStorage.setItem('empWOF', JSON.stringify(state));
+    setTimeout(()=>document.getElementById('spinResult').classList.remove('bankrupt-flash'),2500);
+    document.getElementById('spinValueDisplay').textContent='BANKRUPT!';
+    update = {spinValue:0, canGuess:false, status:`💥 BANKRUPT! Team ${currentTeam} loses all round winnings!`,
+      t1round: currentTeam===1 ? 0 : cachedState.t1round||0,
+      t2round: currentTeam===2 ? 0 : cachedState.t2round||0};
+    publishWheelUpdate(update);
     setTimeout(() => {
-      currentTeam = currentTeam === 1 ? 2 : 1;
-      state.team = currentTeam;
-      state.ts = Date.now();
-      localStorage.setItem('empWOF', JSON.stringify(state));
+      currentTeam = currentTeam===1?2:1;
+      publishWheelUpdate({team:currentTeam, status:`Team ${currentTeam}'s turn — spin the wheel!`});
       updateScoreboard();
     }, 1800);
-
-  } else if (seg.special === 'lose') {
-    document.getElementById('spinValueDisplay').textContent = 'LOSE A TURN';
-    state.spinValue = 0;
-    state.canGuess = false;
-    state.status = `😬 LOSE A TURN! Team ${currentTeam}'s turn is over.`;
-    state.ts = Date.now();
-    localStorage.setItem('empWOF', JSON.stringify(state));
+  } else if (seg.special==='lose') {
+    document.getElementById('spinValueDisplay').textContent='LOSE A TURN';
+    update = {spinValue:0, canGuess:false, status:`😬 LOSE A TURN! Team ${currentTeam}'s turn is over.`};
+    publishWheelUpdate(update);
     setTimeout(() => {
-      currentTeam = currentTeam === 1 ? 2 : 1;
-      state.team = currentTeam;
-      state.ts = Date.now();
-      localStorage.setItem('empWOF', JSON.stringify(state));
+      currentTeam = currentTeam===1?2:1;
+      publishWheelUpdate({team:currentTeam, status:`Team ${currentTeam}'s turn — spin the wheel!`});
       updateScoreboard();
     }, 1500);
-
   } else {
-    document.getElementById('spinValueDisplay').textContent = `${label} per letter`;
-    state.spinValue = seg.value;
-    state.canGuess = true;
-    state.status = `🎡 Team ${currentTeam} spun ${label}! Guess a letter!`;
-    state.ts = Date.now();
-    localStorage.setItem('empWOF', JSON.stringify(state));
+    document.getElementById('spinValueDisplay').textContent=`${label} per letter`;
+    update = {spinValue:seg.value, canGuess:true, status:`🎡 Team ${currentTeam} spun ${label}! Guess a letter!`};
+    publishWheelUpdate(update);
   }
 }
 
-// ============================================================
-// SPIN TRIGGER from host screen
-// ============================================================
-let lastTriggerTs = 0;
-
-window.addEventListener('storage', e => {
-  if (e.key === 'empWOF_trigger' && e.newValue) {
-    try {
-      const d = JSON.parse(e.newValue);
-      if (d.spin && d.ts !== lastTriggerTs) { lastTriggerTs = d.ts; spinWheel(); }
-    } catch(_) {}
-  }
-});
-
-setInterval(() => {
-  try {
-    const raw = localStorage.getItem('empWOF_trigger');
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d.spin && d.ts !== lastTriggerTs) { lastTriggerTs = d.ts; spinWheel(); }
-    }
-  } catch(_) {}
-}, 150);
-
-// ============================================================
-// SCORE SYNC from host
-// ============================================================
-function applyState(data) {
-  currentTeam = data.team || 1;
-  document.getElementById('t1total').textContent = '$'+(data.t1total||0).toLocaleString();
-  document.getElementById('t2total').textContent = '$'+(data.t2total||0).toLocaleString();
-  document.getElementById('t1round').textContent = '$'+(data.t1round||0).toLocaleString();
-  document.getElementById('t2round').textContent = '$'+(data.t2round||0).toLocaleString();
-  updateScoreboard();
-}
-
-function updateScoreboard() {
-  document.getElementById('tb1').classList.toggle('active', currentTeam===1);
-  document.getElementById('tb2').classList.toggle('active', currentTeam===2);
+function publishWheelUpdate(data) {
+  if (channel) channel.publish('wheel-update', data);
 }
 
 function bankRound(t) {
-  // Mirror bank action to host
-  const raw = localStorage.getItem('empWOF');
-  if (!raw) return;
-  try {
-    const d = JSON.parse(raw);
-    d[`t${t}total`] += d[`t${t}round`];
-    d[`t${t}round`] = 0;
-    d.ts = Date.now();
-    localStorage.setItem('empWOF', JSON.stringify(d));
-    applyState(d);
-  } catch(_) {}
+  const total = (cachedState[`t${t}total`]||0) + (cachedState[`t${t}round`]||0);
+  const update = {[`t${t}total`]:total, [`t${t}round`]:0};
+  cachedState = {...cachedState, ...update};
+  publishWheelUpdate(update);
+  applyScores(cachedState);
 }
 
-window.addEventListener('storage', e => {
-  if (e.key === 'empWOF' && e.newValue) {
-    try {
-      const d = JSON.parse(e.newValue);
-      if (d.ts !== lastTs) { lastTs = d.ts; applyState(d); }
-    } catch(err) { console.error('empWOF wheel parse error:', err); }
-  }
-});
+function applyScores(data) {
+  if (typeof data.team !== 'undefined') { currentTeam=data.team; updateScoreboard(); }
+  document.getElementById('t1total').textContent='$'+(data.t1total||0).toLocaleString();
+  document.getElementById('t2total').textContent='$'+(data.t2total||0).toLocaleString();
+  document.getElementById('t1round').textContent='$'+(data.t1round||0).toLocaleString();
+  document.getElementById('t2round').textContent='$'+(data.t2round||0).toLocaleString();
+}
 
-// Poll for same-window updates
-let lastTs = 0;
-setInterval(() => {
-  try {
-    const raw = localStorage.getItem('empWOF');
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d.ts !== lastTs) { lastTs = d.ts; applyState(d); }
+function updateScoreboard() {
+  document.getElementById('tb1').classList.toggle('active',currentTeam===1);
+  document.getElementById('tb2').classList.toggle('active',currentTeam===2);
+}
+
+function initAbly() {
+  const ably = new Ably.Realtime({key:ABLY_KEY});
+  channel = ably.channels.get('emp-wof');
+
+  // Listen for full state updates from host
+  channel.subscribe('state', (msg) => {
+    cachedState = msg.data;
+    applyScores(msg.data);
+    if (msg.data.spinValue !== undefined) {
+      document.getElementById('spinValueDisplay').textContent =
+        msg.data.canGuess ? `$${msg.data.spinValue} per letter` : 'WAITING FOR HOST…';
     }
-  } catch(err) { console.error('empWOF wheel poll error:', err); }
-}, 200);
+  });
 
-try {
-  const existing = localStorage.getItem('empWOF');
-  if (existing) { applyState(JSON.parse(existing)); }
-} catch(err) { console.error('empWOF wheel init error:', err); }
+  // Listen for spin trigger from host
+  channel.subscribe('spin-trigger', (msg) => {
+    if (msg.data.spin) spinWheel();
+  });
+}
 
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  } else {
-    document.exitFullscreen().catch(() => {});
-  }
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen().catch(()=>{});
 }
 document.addEventListener('fullscreenchange', () => {
-  const btn = document.querySelector('.fullscreen-btn');
-  if (btn) btn.textContent = document.fullscreenElement ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+  const btn=document.querySelector('.fullscreen-btn');
+  if (btn) btn.textContent=document.fullscreenElement?'✕ Exit Fullscreen':'⛶ Fullscreen';
 });
+
+initAbly();
 </script>
 </body>
 </html>
