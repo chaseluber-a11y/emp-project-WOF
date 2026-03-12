@@ -69,9 +69,28 @@
   .divider{height:1px;background:var(--border);margin:2px 0}
   .fullscreen-btn{background:rgba(255,255,255,0.07);border:1px solid var(--border);color:#aabbcc;border-radius:6px;padding:6px 12px;font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:2px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
   .fullscreen-btn:hover{background:rgba(255,255,255,0.14);color:#fff;border-color:var(--cyan)}
+  /* PASSWORD OVERLAY */
+  .pw-overlay{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background-image:radial-gradient(ellipse at 50% 50%,rgba(0,80,180,0.15) 0%,transparent 65%)}
+  .pw-overlay.hidden{display:none}
+  .pw-logo{font-size:56px}
+  .pw-title{font-family:'Bebas Neue',cursive;font-size:42px;letter-spacing:6px;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,0.4)}
+  .pw-sub{font-size:13px;letter-spacing:4px;color:#334466;text-transform:uppercase}
+  .pw-input{background:rgba(255,255,255,0.06);border:2px solid var(--border);border-radius:8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:22px;padding:12px 20px;outline:none;text-align:center;letter-spacing:4px;width:280px;transition:border-color 0.2s}
+  .pw-input:focus{border-color:var(--cyan)}
+  .pw-btn{background:linear-gradient(135deg,var(--gold),#c8960c);color:#000;border:none;border-radius:8px;padding:12px 40px;font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:3px;cursor:pointer;transition:all 0.15s}
+  .pw-btn:hover{filter:brightness(1.15);transform:translateY(-1px)}
+  .pw-error{font-size:13px;letter-spacing:2px;color:var(--red);min-height:18px}
 </style>
 </head>
 <body>
+<div class="pw-overlay" id="pwOverlay">
+  <div class="pw-logo">⚡</div>
+  <div class="pw-title">HOST ACCESS</div>
+  <div class="pw-sub">Life.Church EMP Training</div>
+  <input class="pw-input" type="password" id="pwInput" placeholder="Enter password" />
+  <button class="pw-btn" onclick="checkPassword()">Enter</button>
+  <div class="pw-error" id="pwError"></div>
+</div>
 <div class="header">
   <h1>⚡ EMP WOF — Host Controls</h1>
   <div class="header-right">
@@ -130,6 +149,11 @@
   </div>
 </div>
 <script>
+// ============================================================
+// ⚠️  SET YOUR HOST PASSWORD HERE
+// ============================================================
+const HOST_PASSWORD = 'lifechurch2026';
+
 // ============================================================
 // ⚠️  PASTE YOUR ABLY ROOT API KEY BETWEEN THE QUOTES BELOW
 // ============================================================
@@ -340,7 +364,25 @@ document.addEventListener('fullscreenchange', () => {
 document.getElementById('letterInput').addEventListener('keydown', e => { if(e.key==='Enter') guessLetter(); });
 document.getElementById('solveInput').addEventListener('keydown', e => { if(e.key==='Enter') trySolve(); });
 
-buildPuzzleList(); updateUI(); initAbly();
+// ============================================================
+// PASSWORD
+// ============================================================
+function checkPassword() {
+  const val = document.getElementById('pwInput').value;
+  if (val === HOST_PASSWORD) {
+    document.getElementById('pwOverlay').classList.add('hidden');
+    initAbly();
+  } else {
+    document.getElementById('pwError').textContent = 'Incorrect password. Try again.';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+document.getElementById('pwInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+
+buildPuzzleList(); updateUI();
 </script>
 </body>
 </html>
