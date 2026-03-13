@@ -78,6 +78,7 @@ const ABLY_KEY = 'leOFKA.nbOkGA:CknTFn0f2ehAmi88tbNF0Hj5wY_ld-XuxHnOjbKkYTg';
 
 let prevRevealed = new Set(), prevPhrase = '';
 let gameStarted = false;
+let lastState = null;
 
 // Build the board structure — tiles start hidden, revealed ones shown immediately
 // For staggered reveals, we mark newly revealed tiles with data-new and animate them in sequence
@@ -155,6 +156,8 @@ function buildBoard(phrase, revealed, newLetters) {
 let solvedTimer = null;
 
 function applyState(data) {
+  // Always cache latest state — applyState only renders if game has started
+  lastState = data;
   if (!gameStarted) return;
   document.getElementById('waiting').classList.add('hidden');
   const phrase = (data.phrase||'').toUpperCase();
@@ -254,6 +257,8 @@ function revealGame() {
     gameStarted = true;
     ov.classList.remove('show');
     document.getElementById('waiting').classList.add('hidden');
+    // Apply any state that arrived while waiting
+    if (lastState) applyState(lastState);
   }
 
   // Show video over waiting screen (don't hide waiting yet)
@@ -270,7 +275,7 @@ function revealGame() {
 
 function initAbly() {
   const ably = new Ably.Realtime({key:ABLY_KEY});
-  const channel = ably.channels.get('emp-wof', {params:{rewind:'1'}});
+  const channel = ably.channels.get('emp-wof');
   channel.subscribe('state', (msg) => { applyState(msg.data); });
   channel.subscribe('wheel-update', (msg) => {
     if (msg.data.status) document.getElementById('statusTicker').textContent = msg.data.status;
