@@ -45,10 +45,6 @@
   .sf-title{font-family:'Bebas Neue',cursive;font-size:clamp(56px,8vw,100px);letter-spacing:8px;color:var(--gold);text-shadow:0 0 40px rgba(255,215,0,0.6);animation:pop 0.5s cubic-bezier(0.34,1.56,0.64,1)}
   @keyframes pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
   .sf-phrase{font-family:'Bebas Neue',cursive;font-size:clamp(22px,3vw,40px);letter-spacing:4px;color:#fff;padding:14px 28px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px}
-  /* VIDEO OVERLAY */
-  .video-overlay{position:fixed;inset:0;z-index:200;background:#000;display:none;align-items:center;justify-content:center}
-  .video-overlay.show{display:flex}
-  .video-overlay video{width:100%;height:100%;object-fit:contain}
 </style>
 </head>
 <body>
@@ -57,12 +53,6 @@
   <div class="wt-title">WHEEL OF FORTUNE</div>
   <div class="wt-brand">Life.Church — EMP Training</div>
   <div class="wt-sub">Waiting for host to begin…</div>
-</div>
-<!-- VIDEO INTRO (with audio) -->
-<div class="video-overlay" id="videoOverlay">
-  <video id="introVideo" playsinline>
-    <source src="video/intro.mp4" type="video/mp4">
-  </video>
 </div>
 <div class="solved-flash" id="solvedFlash">
   <div class="sf-title">🎉 SOLVED!</div>
@@ -220,10 +210,10 @@ let isMuted = false;
 let sfxVol = 0.9;
 
 const BOARD_SFX = {
-  ding:    'audio/ding.mp3',
-  wrong:   'audio/wrong.mp3',
-  solved:  'audio/solved.mp3',
-  reveal:  'audio/reveal.mp3',
+  ding:    '../audio/ding.mp3',
+  wrong:   '../audio/wrong.mp3',
+  solved:  '../audio/solved.mp3',
+  reveal:  '../audio/reveal.mp3',
 };
 
 function playBoardSFX(name) {
@@ -245,47 +235,37 @@ function handleAudioCue(d) {
 }
 
 
-// Unlock audio/video on first user interaction (required by browsers)
-let audioUnlocked = false;
-document.addEventListener('click', function unlockAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  // Preload and prime the video so it plays instantly when triggered
-  const vid = document.getElementById('introVideo');
-  if (vid) {
-    vid.load();
-    vid.muted = true;
-    vid.play().then(() => { vid.pause(); vid.currentTime = 0; vid.muted = false; }).catch(()=>{});
-  }
-  document.getElementById('waitSub').textContent = 'Waiting for host to start…';
-}, {once: true});
 
-function showIntroVideo() {
+// Pre-prime video on page load to unlock autoplay policy
+window.addEventListener('load', () => {
+  const vid = document.getElementById('introVideo');
+  if (!vid) return;
+  vid.muted = true;
+  vid.load();
+  const p = vid.play();
+  if (p) p.then(() => { vid.pause(); vid.currentTime = 0; vid.muted = false; }).catch(() => {});
+});
+
+function revealGame() {
   const ov  = document.getElementById('videoOverlay');
   const vid = document.getElementById('introVideo');
 
-  function startGame() {
+  function afterVideo() {
     gameStarted = true;
     ov.classList.remove('show');
     document.getElementById('waiting').classList.add('hidden');
   }
 
+  // Show video over waiting screen (don't hide waiting yet)
   ov.classList.add('show');
+  vid.currentTime = 0;
   vid.volume = 1;
-
-  const playPromise = vid.play();
-  if (playPromise !== undefined) {
-    playPromise.then(() => {
-      vid.onended = () => startGame();
-    }).catch(() => {
-      // Autoplay blocked — skip intro
-      console.warn('Video autoplay blocked — skipping intro');
-      setTimeout(() => startGame(), 500);
-    });
-  } else {
-    vid.onended = () => startGame();
-    setTimeout(() => { if (!gameStarted) startGame(); }, 15000);
-  }
+  vid.muted = false;
+  vid.play().then(() => {
+    vid.onended = afterVideo;
+  }).catch(() => {
+    afterVideo();
+  });
 }
 
 function initAbly() {
@@ -298,7 +278,7 @@ function initAbly() {
   // Audio cues from host
   channel.subscribe('audio-cue', (msg) => { handleAudioCue(msg.data); });
   // Intro video trigger from host
-  channel.subscribe('intro-start', () => { showIntroVideo(); });
+  channel.subscribe('intro-start', () => { revealGame(); });
 }
 
 function toggleFullscreen() {
