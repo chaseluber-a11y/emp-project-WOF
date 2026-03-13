@@ -184,7 +184,10 @@ function applyState(data) {
   const isNewPuzzle = phrase && phrase !== prevPhrase;
 
   if (phrase) {
-    if (isNewPuzzle) {
+    if (data.instantReveal) {
+      // Solve — instant reveal, no dings. Audio handled by solve-reveal cue separately.
+      buildBoard(phrase, revealed, null);
+    } else if (isNewPuzzle) {
       // New puzzle — build fresh, no stagger, play reveal sound
       buildBoard(phrase, revealed, null);
       playBoardSFX('reveal');
@@ -193,7 +196,6 @@ function applyState(data) {
       const newLetters = new Set([...revealed].filter(ch => !prevRevealed.has(ch)));
       if (newLetters.size > 0) {
         buildBoard(phrase, revealed, newLetters);
-        // NOTE: dings are fired inside buildBoard per tile — don't fire here
       } else {
         buildBoard(phrase, revealed, null);
       }
