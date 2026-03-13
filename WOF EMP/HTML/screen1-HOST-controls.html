@@ -212,10 +212,10 @@ const HOST_PASSWORD = 'lifechurch2026';
 // ============================================================
 const ABLY_KEY = 'leOFKA.nbOkGA:CknTFn0f2ehAmi88tbNF0Hj5wY_ld-XuxHnOjbKkYTg';
 // ============================================================
-// 🎵 MUSIC TRACKS — files go in audio/ folder on GitHub
+// 🎵 MUSIC TRACKS — files go in ../audio/ folder on GitHub
 // ============================================================
 const TRACKS = [
-  { name: 'Theme', file: 'audio/theme.mp3' },
+  { name: 'Theme', file: '../audio/theme.mp3' },
 ];
 
 let currentTrackIdx = 0;
@@ -253,13 +253,11 @@ function publishAudioCue(cue, data = {}) {
 
 function startGame() {
   document.getElementById('startBtn').disabled = true;
-  // Tell wheel + board to show intro video
+  // Tell wheel + board to play intro video
   if (channel) channel.publish('intro-start', {});
-  // Wait for video to finish, then load first puzzle
-  // ⚠️  Change 13000 to your video length in milliseconds
-  setTimeout(() => {
-    loadPuzzle(0);
-  }, 13000);
+  // Load first puzzle after video finishes
+  // ⚠️ Change 13000 to match your video length in milliseconds
+  setTimeout(() => { loadPuzzle(0); }, 13000);
 }
 
 
