@@ -201,8 +201,11 @@
     <button class="btn btn-orange" id="btnVowel" onclick="buyVowel()" disabled>🔤 Buy a Vowel — $250</button>
     <div class="vowel-note" id="vowelNote"></div>
     <div class="divider"></div>
-    <div class="input-group"><label>Solve the Puzzle</label><input type="text" id="solveInput" placeholder="Type full solution…"/></div>
-    <button class="btn btn-green" id="btnSolve" onclick="trySolve()" disabled>✓ Submit Solution</button>
+    <label style="font-size:11px;letter-spacing:3px;color:#445566;text-transform:uppercase">Solve the Puzzle</label>
+    <div class="btn-row">
+      <button class="btn btn-green" id="btnSolve" onclick="solveCorrect()" disabled>✅ Correct Solve</button>
+      <button class="btn btn-red" id="btnSolveWrong" onclick="solveWrong()" disabled>❌ Incorrect Solve</button>
+    </div>
     <div class="divider"></div>
     <div class="btn-row">
       <button class="btn btn-purple" onclick="switchTeam()">⇄ Pass Turn</button>
@@ -319,6 +322,7 @@ function initAbly() {
       document.getElementById('btnGuess').disabled = !G.canGuess;
       // btnVowel managed by updateUI independently of canGuess
       document.getElementById('btnSolve').disabled = !G.canGuess;
+      document.getElementById('btnSolveWrong').disabled = !G.canGuess;
     }
     if (typeof d.team !== 'undefined') G.team = d.team;
     if (typeof d.t1round !== 'undefined') G.t1round = d.t1round;
@@ -439,7 +443,7 @@ function guessLetter() {
   const inp = document.getElementById('letterInput');
   const letter = inp.value.toUpperCase().trim(); inp.value = ''; inp.focus();
   if (!letter || !/[A-Z]/.test(letter)) { setStatus('Enter a valid letter A–Z.'); return; }
-  if (G.used.has(letter)) { setStatus(`"${letter}" was already guessed!`); return; }
+  if (G.used.has(letter)) { setStatus('"' + letter + '" was already guessed!'); return; }
   G.used.add(letter);
   const count = [...G.phrase].filter(c => c === letter).length;
   if (count > 0) {
@@ -450,40 +454,43 @@ function guessLetter() {
     G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
     document.getElementById('btnSolve').disabled = false;
-    setStatus(`✅ "${letter}" appears ${count}x — ${G.team===1?G.t1name:G.t2name} earns $${earn.toLocaleString()}!`);
+    document.getElementById('btnSolveWrong').disabled = false;
+    setStatus('✅ "' + letter + '" appears ' + count + 'x — ' + (G.team===1?G.t1name:G.t2name) + ' earns $' + earn.toLocaleString() + '!');
     publishAudioCue('music-stop');
-    publishAudioCue('sfx', {name: 'ding'});
-    if (isSolved()) { revealAll(); updateUI(); showSolved(`${G.team===1?G.t1name:G.t2name} revealed the whole puzzle!`); }
+    if (isSolved()) { revealAll(); updateUI(); showSolved((G.team===1?G.t1name:G.t2name) + ' revealed the whole puzzle!'); }
     else broadcast();
   } else {
     renderUsed(); G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
     document.getElementById('btnSolve').disabled = true;
-    setStatus(`❌ No "${letter}" in the puzzle — turn passes to ${G.team===1?G.t2name:G.t1name}!`);
+    document.getElementById('btnSolveWrong').disabled = true;
+    setStatus('❌ No "' + letter + '" in the puzzle — turn passes to ' + (G.team===1?G.t2name:G.t1name) + '!');
     publishAudioCue('music-stop');
     publishAudioCue('sfx', {name: 'wrong'});
-    broadcast(); setTimeout(() => switchTeam(), 1400);
+    broadcast();
+    setTimeout(() => switchTeam(), 1400);
   }
 }
 
-function trySolve() {
-  const inp = document.getElementById('solveInput');
-  const attempt = inp.value.toUpperCase().trim(); inp.value = '';
-  if (!attempt) { setStatus('Type your solution first!'); return; }
-  const norm = s => s.replace(/\s+/g,' ').trim();
-  if (norm(attempt) === norm(G.phrase)) {
-    revealAll(); updateUI(); G[`t${G.team}round`] += 1000; updateUI();
-    showSolved(`${G.team===1?G.t1name:G.t2name} solved it! +$1,000 bonus!`);
-  } else {
-    G.canGuess = false;
-    document.getElementById('btnGuess').disabled = true;
-    document.getElementById('btnSolve').disabled = true;
-    setStatus(`❌ Wrong solve — turn passes!`);
-    publishAudioCue('music-stop');
-    publishAudioCue('sfx', {name: 'wrong'});
-    broadcast(); setTimeout(() => switchTeam(), 1400);
-  }
+
+function solveCorrect() {
+  revealAll(); updateUI();
+  G[`t${G.team}round`] += 1000; updateUI();
+  showSolved((G.team===1?G.t1name:G.t2name) + ' solved it! +$1,000 bonus!');
 }
+
+function solveWrong() {
+  G.canGuess = false;
+  document.getElementById('btnGuess').disabled = true;
+  document.getElementById('btnSolve').disabled = true;
+  document.getElementById('btnSolveWrong').disabled = true;
+  setStatus('❌ Wrong solve — turn passes to ' + (G.team===1?G.t2name:G.t1name) + '!');
+  publishAudioCue('music-stop');
+  publishAudioCue('sfx', {name: 'wrong'});
+  broadcast();
+  setTimeout(() => switchTeam(), 1400);
+}
+
 
 function showSolved(msg) {
   setStatus(`🎉 SOLVED! ${msg}`);
@@ -492,6 +499,7 @@ function showSolved(msg) {
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
+  document.getElementById('btnSolveWrong').disabled = true;
   broadcast({solved:true, instantReveal:true});
 }
 
@@ -502,6 +510,7 @@ function switchTeam() {
   G.team = G.team===1 ? 2 : 1; G.canGuess = false;
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnSolve').disabled = true;
+  document.getElementById('btnSolveWrong').disabled = true;
   updateUI(); setStatus(`${G.team===1?G.t1name:G.t2name}'s turn — spin the wheel!`); broadcast();
 }
 
@@ -518,6 +527,7 @@ function resetGame() {
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
+  document.getElementById('btnSolveWrong').disabled = true;
   updateUI(); loadPuzzle(0);
 }
 
@@ -587,7 +597,7 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 document.getElementById('letterInput').addEventListener('keydown', e => { if(e.key==='Enter') guessLetter(); });
-document.getElementById('solveInput').addEventListener('keydown', e => { if(e.key==='Enter') trySolve(); });
+
 
 // ============================================================
 // PASSWORD
