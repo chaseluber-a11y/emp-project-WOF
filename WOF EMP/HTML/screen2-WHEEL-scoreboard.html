@@ -224,11 +224,11 @@ function land(angle) {
     document.getElementById('spinResult').classList.add('bankrupt-flash');
     setTimeout(()=>document.getElementById('spinResult').classList.remove('bankrupt-flash'),2500);
     document.getElementById('spinValueDisplay').textContent='BANKRUPT!';
+    if (channel) channel.publish('audio-cue', {cue:'sfx-wheel', name:'bankrupt'});
     update = {spinValue:0, canGuess:false, status:`💥 BANKRUPT! Team ${currentTeam} loses all round winnings!`,
       t1round: currentTeam===1 ? 0 : cachedState.t1round||0,
       t2round: currentTeam===2 ? 0 : cachedState.t2round||0};
     publishWheelUpdate(update);
-    playWheelSFX('bankrupt');
     setTimeout(() => {
       currentTeam = currentTeam===1?2:1;
       publishWheelUpdate({team:currentTeam, status:`Team ${currentTeam}'s turn — spin the wheel!`});
@@ -236,9 +236,9 @@ function land(angle) {
     }, 1800);
   } else if (seg.special==='lose') {
     document.getElementById('spinValueDisplay').textContent='LOSE A TURN';
+    if (channel) channel.publish('audio-cue', {cue:'sfx-wheel', name:'wrong'});
     update = {spinValue:0, canGuess:false, status:`😬 LOSE A TURN! Team ${currentTeam}'s turn is over.`};
     publishWheelUpdate(update);
-    playWheelSFX('lose_turn');
     setTimeout(() => {
       currentTeam = currentTeam===1?2:1;
       publishWheelUpdate({team:currentTeam, status:`Team ${currentTeam}'s turn — spin the wheel!`});
@@ -248,6 +248,8 @@ function land(angle) {
     document.getElementById('spinValueDisplay').textContent=`${label} per letter`;
     update = {spinValue:seg.value, canGuess:true, status:`🎡 Team ${currentTeam} spun ${label}! Guess a letter!`};
     publishWheelUpdate(update);
+    // Start theme music now that wheel has landed — plays until letter guessed
+    if (channel) channel.publish('audio-cue', {cue:'theme-start'});
   }
 }
 
@@ -278,46 +280,11 @@ function updateScoreboard() {
 
 
 // ============================================================
-// AUDIO — Wheel plays: theme music, bankrupt, lose_turn
+// AUDIO — Wheel screen has NO audio. All sound plays on the board screen.
+// Wheel just publishes audio cues via Ably for the board to handle.
 // ============================================================
-let isMuted = false;
-let themeAudio = null;
-let musicVol = 0.6;
-let sfxVol = 0.9;
-
-const WHEEL_SFX = {
-  bankrupt:  '../audio/bankrupt.mp3',
-  lose_turn: '../audio/wrong.mp3',
-};
-
-function playWheelSFX(name) {
-  if (isMuted) return;
-  const src = WHEEL_SFX[name];
-  if (!src) return;
-  const a = new Audio(src); a.volume = sfxVol; a.play().catch(()=>{});
-}
-
-function startTheme(file) {
-  if (isMuted) return;
-  stopTheme();
-  themeAudio = new Audio(file);
-  themeAudio.loop = true;
-  themeAudio.volume = musicVol;
-  themeAudio.play().catch(()=>{});
-}
-
-function stopTheme() {
-  if (themeAudio) { themeAudio.pause(); themeAudio.currentTime = 0; themeAudio = null; }
-}
-
 function handleAudioCue(d) {
-  switch (d.cue) {
-    case 'spin-start':    startTheme(d.trackFile); break;
-    case 'music-stop':    stopTheme(); break;
-    case 'mute':          isMuted = d.muted; if (isMuted) stopTheme(); break;
-    case 'set-music-vol': musicVol = d.vol; if (themeAudio) themeAudio.volume = d.vol; break;
-    case 'set-sfx-vol':   sfxVol = d.vol; break;
-  }
+  // Wheel screen intentionally silent — board handles all audio
 }
 
 
