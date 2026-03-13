@@ -119,6 +119,7 @@
       <span class="conn-label" id="connLabel">Connecting…</span>
     </div>
     <button class="mute-btn" id="muteBtn" onclick="toggleMute()">🔊 Sound On</button>
+    <button class="mute-btn" onclick="resetGame()" style="border-color:#ff3b3b;color:#ff3b3b;">↺ Reset</button>
     <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     <div class="screen-badge">SCREEN 1 — HOST ONLY</div>
   </div>
@@ -252,9 +253,10 @@ function publishAudioCue(cue, data = {}) {
 
 function startGame() {
   document.getElementById('startBtn').disabled = true;
-  // Tell wheel + board to show the intro video
+  // Tell wheel + board to show intro video
   if (channel) channel.publish('intro-start', {});
-  // Auto-load first puzzle after video finishes (12s buffer — adjust to match your video length)
+  // Wait for video to finish, then load first puzzle
+  // ⚠️  Change 13000 to your video length in milliseconds
   setTimeout(() => {
     loadPuzzle(0);
   }, 13000);
