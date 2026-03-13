@@ -162,16 +162,27 @@
     <button class="start-btn" id="startBtn" onclick="startGame()">▶ START GAME</button>
     <div class="input-group"><label>Game Status</label><div class="status-box" id="statusBox">Connecting…</div></div>
     <div class="input-group">
+      <label>Team Names</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input type="text" id="team1Name" placeholder="Team 1" maxlength="20"
+          oninput="updateTeamNames()"
+          style="text-transform:none;letter-spacing:1px;font-size:14px;color:var(--blue1);border-color:var(--blue1)"/>
+        <input type="text" id="team2Name" placeholder="Team 2" maxlength="20"
+          oninput="updateTeamNames()"
+          style="text-transform:none;letter-spacing:1px;font-size:14px;color:var(--blue2);border-color:var(--blue2)"/>
+      </div>
+    </div>
+    <div class="input-group">
       <label>Scoreboard</label>
       <div class="score-summary">
         <div class="ss-team active" id="ss1">
-          <div class="ss-name t1n">Team 1</div>
+          <div class="ss-name t1n" id="ss1name">Team 1</div>
           <div class="ss-total" id="ss1total">$0</div>
           <div class="ss-round">Round: <span id="ss1round">$0</span></div>
           <div class="ss-turn">ACTIVE</div>
         </div>
         <div class="ss-team" id="ss2">
-          <div class="ss-name t2n">Team 2</div>
+          <div class="ss-name t2n" id="ss2name">Team 2</div>
           <div class="ss-total" id="ss2total">$0</div>
           <div class="ss-round">Round: <span id="ss2round">$0</span></div>
           <div class="ss-turn">ACTIVE</div>
@@ -179,8 +190,8 @@
       </div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-dim" onclick="bankRound(1)">Bank T1</button>
-      <button class="btn btn-dim" onclick="bankRound(2)">Bank T2</button>
+      <button class="btn btn-dim" id="bankBtn1" onclick="bankRound(1)">Bank T1</button>
+      <button class="btn btn-dim" id="bankBtn2" onclick="bankRound(2)">Bank T2</button>
     </div>
     <div class="divider"></div>
     <button class="btn btn-gold" id="btnSpin" onclick="triggerSpin()">🎡 SPIN THE WHEEL</button>
@@ -275,6 +286,7 @@ let G = {
   puzzleIdx:0, phrase:'', revealed:new Set(), used:new Set(),
   team:1, t1total:0, t2total:0, t1round:0, t2round:0,
   spinValue:0, canGuess:false, round:1,
+  t1name:'Team 1', t2name:'Team 2',
 };
 
 let channel;
@@ -326,6 +338,7 @@ function broadcast(extra = {}) {
     revealed:[...G.revealed], used:[...G.used], team:G.team,
     t1total:G.t1total, t2total:G.t2total, t1round:G.t1round, t2round:G.t2round,
     spinValue:G.spinValue, canGuess:G.canGuess, round:G.round,
+    t1name:G.t1name, t2name:G.t2name,
     status:document.getElementById('statusBox').textContent, ...extra,
   });
 }
@@ -347,7 +360,7 @@ function loadPuzzle(idx) {
   document.getElementById('solveInput').value = '';
   document.getElementById('letterInput').value = '';
   renderUsed(); updateUI();
-  setStatus(`Puzzle ${idx+1} loaded! Team ${G.team} — spin the wheel!`);
+  setStatus(`Puzzle ${idx+1} loaded! ${G.team===1?G.t1name:G.t2name} — spin the wheel!`);
   broadcast();
   document.querySelectorAll('.puzzle-item').forEach((el,i) => el.classList.toggle('active', i===idx));
 }
@@ -399,7 +412,7 @@ function buyVowel() {
     document.getElementById('btnSolve').disabled = false;
     setStatus(`🔤 Bought "${letter}" for $${VOWEL_COST} — appears ${count}x! (No earnings for vowels)`);
     publishAudioCue('sfx', {name: 'ding'});
-    if (isSolved()) { revealAll(); updateUI(); showSolved(`Team ${G.team} revealed the whole puzzle!`); }
+    if (isSolved()) { revealAll(); updateUI(); showSolved(`${G.team===1?G.t1name:G.t2name} revealed the whole puzzle!`); }
     else broadcast();
   } else {
     renderUsed(); updateUI();
@@ -435,17 +448,17 @@ function guessLetter() {
     document.getElementById('btnGuess').disabled = true;
     document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = false;
-    setStatus(`✅ "${letter}" appears ${count}x — Team ${G.team} earns $${earn.toLocaleString()}!`);
+    setStatus(`✅ "${letter}" appears ${count}x — ${G.team===1?G.t1name:G.t2name} earns $${earn.toLocaleString()}!`);
     publishAudioCue('music-stop');
     publishAudioCue('sfx', {name: 'ding'});
-    if (isSolved()) { revealAll(); updateUI(); showSolved(`Team ${G.team} revealed the whole puzzle!`); }
+    if (isSolved()) { revealAll(); updateUI(); showSolved(`${G.team===1?G.t1name:G.t2name} revealed the whole puzzle!`); }
     else broadcast();
   } else {
     renderUsed(); G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
     document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = true;
-    setStatus(`❌ No "${letter}" in the puzzle — turn passes!`);
+    setStatus(`❌ No "${letter}" in the puzzle — turn passes to ${G.team===1?G.t2name:G.t1name}!`);
     publishAudioCue('music-stop');
     publishAudioCue('sfx', {name: 'wrong'});
     broadcast(); setTimeout(() => switchTeam(), 1400);
@@ -459,7 +472,7 @@ function trySolve() {
   const norm = s => s.replace(/\s+/g,' ').trim();
   if (norm(attempt) === norm(G.phrase)) {
     revealAll(); updateUI(); G[`t${G.team}round`] += 1000; updateUI();
-    showSolved(`Team ${G.team} solved it! +$1,000 bonus!`);
+    showSolved(`${G.team===1?G.t1name:G.t2name} solved it! +$1,000 bonus!`);
   } else {
     G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
@@ -490,7 +503,7 @@ function switchTeam() {
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
-  updateUI(); setStatus(`Team ${G.team}'s turn — spin the wheel!`); broadcast();
+  updateUI(); setStatus(`${G.team===1?G.t1name:G.t2name}'s turn — spin the wheel!`); broadcast();
 }
 
 function bankRound(t) {
@@ -538,6 +551,19 @@ function renderUsed() {
   [...G.used].sort().forEach(l => {
     const b = document.createElement('span'); b.className='ul-chip'; b.textContent=l; c.appendChild(b);
   });
+}
+
+function updateTeamNames() {
+  const n1 = document.getElementById('team1Name').value.trim() || 'Team 1';
+  const n2 = document.getElementById('team2Name').value.trim() || 'Team 2';
+  G.t1name = n1; G.t2name = n2;
+  // Update host scoreboard display
+  document.getElementById('ss1name').textContent = n1;
+  document.getElementById('ss2name').textContent = n2;
+  document.getElementById('bankBtn1').textContent = 'Bank ' + n1;
+  document.getElementById('bankBtn2').textContent = 'Bank ' + n2;
+  // Broadcast to wheel and board
+  broadcast();
 }
 
 function buildPuzzleList() {
