@@ -50,6 +50,18 @@
   .video-overlay{position:fixed;inset:0;z-index:200;background:#000;display:none;align-items:center;justify-content:center}
   .video-overlay.show{display:flex}
   .video-overlay video{width:100%;height:100%;object-fit:contain}
+
+  /* WINNER OVERLAY */
+  .winner-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,8,40,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;backdrop-filter:blur(8px)}
+  .winner-overlay.show{display:flex}
+  .winner-trophy{font-size:clamp(60px,10vw,120px);animation:bounce 0.8s ease infinite alternate}
+  @keyframes bounce{from{transform:scale(1) translateY(0)}to{transform:scale(1.1) translateY(-12px)}}
+  .winner-label{font-family:'Bebas Neue',cursive;font-size:clamp(16px,2.5vw,28px);letter-spacing:8px;color:#c8960c;text-transform:uppercase}
+  .winner-name{font-family:'Bebas Neue',cursive;font-size:clamp(52px,9vw,120px);letter-spacing:6px;color:#FFD700;text-shadow:0 0 60px rgba(255,215,0,0.8),0 0 20px rgba(255,215,0,0.5);line-height:1}
+  .winner-score{font-family:'Bebas Neue',cursive;font-size:clamp(28px,4vw,54px);letter-spacing:4px;color:#fff;margin-top:4px}
+  .winner-vs{font-family:'Bebas Neue',cursive;font-size:clamp(14px,1.8vw,22px);letter-spacing:3px;color:#334466;margin-top:8px}
+  .tie-title{font-family:'Bebas Neue',cursive;font-size:clamp(48px,8vw,100px);letter-spacing:6px;color:#00e5ff;text-shadow:0 0 40px rgba(0,229,255,0.6);line-height:1}
+  canvas#confettiCanvas{position:fixed;inset:0;z-index:299;pointer-events:none}
 </style>
 </head>
 <body>
@@ -244,12 +256,13 @@ function stopTheme() {
 }
 
 const BOARD_SFX = {
-  ding:     '../audio/ding.mp3',
-  wrong:    '../audio/wrong.mp3',
-  solved:   '../audio/solved.mp3',
-  reveal:   '../audio/reveal.mp3',
-  spin:     '../audio/spin.mp3',
-  bankrupt: '../audio/bankrupt.mp3',
+  ding:        '../audio/ding.mp3',
+  wrong:       '../audio/wrong.mp3',
+  solved:      '../audio/solved.mp3',
+  reveal:      '../audio/reveal.mp3',
+  spin:        '../audio/spin.mp3',
+  bankrupt:    '../audio/bankrupt.mp3',
+  celebration: '../audio/celebration.mp3',
 };
 
 function playBoardSFX(name) {
@@ -346,6 +359,92 @@ function revealGame() {
   });
 }
 
+
+// ============================================================
+// WINNER OVERLAY + CONFETTI
+// ============================================================
+let confettiInterval = null;
+
+function showWinner(data) {
+  const overlay = document.getElementById('winnerOverlay');
+  const trophy  = document.getElementById('winnerTrophy');
+  const label   = document.getElementById('winnerLabel');
+  const name    = document.getElementById('winnerName');
+  const score   = document.getElementById('winnerScore');
+  const vs      = document.getElementById('winnerVs');
+
+  if (data.tie) {
+    trophy.textContent = '🤝';
+    label.textContent  = "It's a Tie!";
+    name.textContent   = '';
+    name.className     = 'tie-title';
+    name.textContent   = 'TIED GAME';
+    score.textContent  = '$' + data.winnerScore.toLocaleString() + ' each';
+    vs.textContent     = data.t1name + ' vs ' + data.t2name;
+  } else {
+    trophy.textContent = '🏆';
+    label.textContent  = '🎉 Winner';
+    name.className     = 'winner-name';
+    name.textContent   = data.winner;
+    score.textContent  = '$' + data.winnerScore.toLocaleString();
+    vs.textContent     = data.loser + ': $' + data.loserScore.toLocaleString();
+  }
+
+  overlay.classList.add('show');
+  startConfetti();
+  playBoardSFX('celebration');
+}
+
+function startConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const COLORS = ['#FFD700','#ff3b3b','#00e5ff','#00e676','#ff5577','#ffffff','#ff9500','#8855ff'];
+  const pieces = Array.from({length: 150}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    w: Math.random() * 12 + 6,
+    h: Math.random() * 6 + 4,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.15,
+    vx: (Math.random() - 0.5) * 3,
+    vy: Math.random() * 3 + 2,
+  }));
+
+  clearInterval(confettiInterval);
+  confettiInterval = setInterval(() => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+      p.x += p.vx; p.y += p.vy; p.rot += p.rotSpeed;
+      if (p.y > canvas.height) {
+        p.y = -20; p.x = Math.random() * canvas.width;
+      }
+    });
+  }, 16);
+}
+
+function stopConfetti() {
+  clearInterval(confettiInterval);
+  const canvas = document.getElementById('confettiCanvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('winnerOverlay').classList.remove('show');
+}
+
+window.addEventListener('resize', () => {
+  const canvas = document.getElementById('confettiCanvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
 function initAbly() {
   const ably = new Ably.Realtime({key:ABLY_KEY});
   const channel = ably.channels.get('emp-wof');
@@ -357,6 +456,7 @@ function initAbly() {
   channel.subscribe('audio-cue', (msg) => { handleAudioCue(msg.data); });
   // Intro video trigger from host
   channel.subscribe('intro-start', () => { revealGame(); });
+  channel.subscribe('game-over', (msg) => { showWinner(msg.data); });
 }
 
 function toggleFullscreen() {
@@ -370,5 +470,15 @@ document.addEventListener('fullscreenchange', () => {
 
 initAbly();
 </script>
+
+<!-- WINNER OVERLAY -->
+<canvas id="confettiCanvas"></canvas>
+<div class="winner-overlay" id="winnerOverlay">
+  <div class="winner-trophy" id="winnerTrophy">🏆</div>
+  <div class="winner-label" id="winnerLabel">Winner</div>
+  <div class="winner-name" id="winnerName"></div>
+  <div class="winner-score" id="winnerScore"></div>
+  <div class="winner-vs" id="winnerVs"></div>
+</div>
 </body>
 </html>
