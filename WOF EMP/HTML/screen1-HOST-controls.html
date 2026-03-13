@@ -513,7 +513,7 @@ function bankRound(t) {
 function nextRound() { G.round++; loadPuzzle((G.puzzleIdx+1) % PUZZLES.length); }
 
 function resetGame() {
-  if (!confirm('Reset the entire game? All scores will be cleared.')) return;
+  // confirm() blocked on GitHub Pages — just reset directly
   G.t1total=0; G.t2total=0; G.t1round=0; G.t2round=0;
   G.team=1; G.round=1; G.spinValue=0; G.canGuess=false;
   document.getElementById('btnGuess').disabled = true;
@@ -572,7 +572,7 @@ function buildPuzzleList() {
     const el = document.createElement('div');
     el.className = 'puzzle-item'+(i===0?' active':'');
     el.innerHTML = `<div class="cat">${p.category}</div><div class="phrase">${p.phrase}</div><div class="hint-preview">💡 ${p.hint}</div>`;
-    el.onclick = () => { if (!G.phrase || confirm('Load this puzzle? Progress resets.')) loadPuzzle(i); };
+    el.onclick = () => { loadPuzzle(i); };
     list.appendChild(el);
   });
 }
