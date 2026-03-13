@@ -488,11 +488,11 @@ function trySolve() {
 function showSolved(msg) {
   setStatus(`🎉 SOLVED! ${msg}`);
   publishAudioCue('music-stop');
-  publishAudioCue('solve-reveal', {}); // board: instant reveal + reveal sound only
+  publishAudioCue('solve-reveal', {}); // board: instant reveal + solved sound
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
-  broadcast({solved:true});
+  broadcast({solved:true, instantReveal:true});
 }
 
 function isSolved() { return [...G.phrase].every(c => c===' ' || G.revealed.has(c)); }
