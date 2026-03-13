@@ -361,7 +361,6 @@ function loadPuzzle(idx) {
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
-  document.getElementById('solveInput').value = '';
   document.getElementById('letterInput').value = '';
   renderUsed(); updateUI();
   setStatus(`Puzzle ${idx+1} loaded! ${G.team===1?G.t1name:G.t2name} — spin the wheel!`);
