@@ -90,6 +90,7 @@ const ABLY_KEY = 'leOFKA.nbOkGA:CknTFn0f2ehAmi88tbNF0Hj5wY_ld-XuxHnOjbKkYTg';
 let prevRevealed = new Set(), prevPhrase = '';
 let gameStarted = false;
 let lastState = null;
+let t1name = 'Team 1', t2name = 'Team 2';
 
 // Build the board structure — tiles start hidden, revealed ones shown immediately
 // For staggered reveals, we mark newly revealed tiles with data-new and animate them in sequence
@@ -174,6 +175,8 @@ function applyState(data) {
   const phrase = (data.phrase||'').toUpperCase();
   const revealed = new Set(data.revealed||[]);
 
+  if (data.t1name) t1name = data.t1name;
+  if (data.t2name) t2name = data.t2name;
   document.getElementById('categoryStrip').textContent = `CATEGORY: ${data.category||'—'}`;
   document.getElementById('hintText').textContent = data.hint||'—';
   document.getElementById('statusTicker').textContent = data.status||'';
