@@ -333,6 +333,8 @@ function broadcast(extra = {}) {
 function triggerSpin() {
   document.getElementById('btnSpin').disabled = true;
   publish('spin-trigger', {spin:true});
+  // Play wheel spin SFX on wheel screen
+  publishAudioCue('sfx-wheel', {name: 'spin'});
   setTimeout(() => { document.getElementById('btnSpin').disabled = false; }, 6500);
 }
 
@@ -473,7 +475,7 @@ function trySolve() {
 function showSolved(msg) {
   setStatus(`🎉 SOLVED! ${msg}`);
   publishAudioCue('music-stop');
-  publishAudioCue('sfx', {name: 'solved'});
+  publishAudioCue('solve-reveal', {}); // board: instant reveal + reveal sound only
   document.getElementById('btnGuess').disabled = true;
   document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
