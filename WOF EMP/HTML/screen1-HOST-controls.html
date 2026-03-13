@@ -119,6 +119,7 @@
       <span class="conn-label" id="connLabel">Connecting…</span>
     </div>
     <button class="mute-btn" id="muteBtn" onclick="toggleMute()">🔊 Sound On</button>
+    <button class="mute-btn" onclick="announceWinner()" style="border-color:#FFD700;color:#FFD700;">🏆 Game Over</button>
     <button class="mute-btn" onclick="resetGame()" style="border-color:#ff3b3b;color:#ff3b3b;">↺ Reset</button>
     <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     <div class="screen-badge">SCREEN 1 — HOST ONLY</div>
@@ -573,6 +574,34 @@ function updateTeamNames() {
   document.getElementById('bankBtn2').textContent = 'Bank ' + n2;
   // Broadcast to wheel and board
   broadcast();
+}
+
+function announceWinner() {
+  // Include round earnings in final tally
+  const t1final = G.t1total + G.t1round;
+  const t2final = G.t2total + G.t2round;
+  let winnerName, loserName, winnerScore, loserScore;
+  if (t1final === t2final) {
+    winnerName = 'TIE';
+    loserName = '';
+    winnerScore = t1final;
+    loserScore = t2final;
+  } else if (t1final > t2final) {
+    winnerName = G.t1name; loserName = G.t2name;
+    winnerScore = t1final; loserScore = t2final;
+  } else {
+    winnerName = G.t2name; loserName = G.t1name;
+    winnerScore = t2final; loserScore = t1final;
+  }
+  publish('game-over', {
+    winner: winnerName,
+    loser: loserName,
+    winnerScore,
+    loserScore,
+    tie: t1final === t2final,
+    t1name: G.t1name, t2name: G.t2name,
+    t1score: t1final, t2score: t2final,
+  });
 }
 
 function buildPuzzleList() {
