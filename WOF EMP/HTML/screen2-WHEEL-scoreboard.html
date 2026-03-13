@@ -69,7 +69,7 @@
   <div class="wt-icon">⚡</div>
   <div class="wt-title">WHEEL OF FORTUNE</div>
   <div class="wt-brand">Life.Church — EMP Training</div>
-  <div class="wt-sub">Waiting for host to start…</div>
+  <div class="wt-sub" id="waitSub">Tap anywhere to enable audio</div>
 </div>
 <!-- VIDEO INTRO -->
 <div class="video-overlay" id="videoOverlay">
@@ -144,6 +144,7 @@ const SEG_ANG = (2*Math.PI)/N;
 
 let wheelAngle = 0, spinning = false, currentTeam = 1;
 let channel, cachedState = {};
+let gameStarted = false;
 
 const canvas = document.getElementById('wheelCanvas');
 const ctx = canvas.getContext('2d');
@@ -316,16 +317,57 @@ function handleAudioCue(d) {
   }
 }
 
-function showIntroVideo() {
-  document.getElementById('waiting').classList.add('hidden');
-  const ov = document.getElementById('videoOverlay');
+
+// Unlock audio/video on first user interaction (required by browsers)
+let audioUnlocked = false;
+document.addEventListener('click', function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  // Preload and prime the video so it plays instantly when triggered
   const vid = document.getElementById('introVideo');
-  ov.classList.add('show');
-  vid.play().catch(()=>{});
-  vid.onended = () => {
+  if (vid) {
+    vid.load();
+    vid.muted = true;
+    vid.play().then(() => { vid.pause(); vid.currentTime = 0; vid.muted = true; }).catch(()=>{});
+  }
+  document.getElementById('waitSub').textContent = 'Waiting for host to start…';
+}, {once: true});
+
+function showIntroVideo() {
+  const ov  = document.getElementById('videoOverlay');
+  const vid = document.getElementById('introVideo');
+
+  function startGame() {
+    gameStarted = true;
     ov.classList.remove('show');
-    // game starts — host will load puzzle via 'state' message
-  };
+    document.getElementById('waiting').classList.add('hidden');
+    // Apply any state that arrived while waiting
+    if (cachedState && cachedState.phrase) {
+      applyScores(cachedState);
+    }
+  }
+
+  // Show video overlay (still over waiting screen)
+  ov.classList.add('show');
+
+  // Try to play — browsers may block autoplay without user gesture
+  // The Ably message IS triggered by the host clicking a button, but
+  // the browser sees it as async so we need to handle the block gracefully
+  const playPromise = vid.play();
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      // Playing fine
+      vid.onended = () => startGame();
+    }).catch(() => {
+      // Autoplay blocked — skip straight to game after short delay
+      console.warn('Video autoplay blocked — skipping intro');
+      setTimeout(() => startGame(), 500);
+    });
+  } else {
+    vid.onended = () => startGame();
+    // Fallback if video fails to load at all
+    setTimeout(() => { if (gameStarted === false) startGame(); }, 15000);
+  }
 }
 
 function initAbly() {
@@ -333,12 +375,14 @@ function initAbly() {
   channel = ably.channels.get('emp-wof');
 
   channel.subscribe('state', (msg) => {
-    document.getElementById('waiting').classList.add('hidden');
     cachedState = msg.data;
-    applyScores(msg.data);
-    if (msg.data.spinValue !== undefined) {
-      document.getElementById('spinValueDisplay').textContent =
-        msg.data.canGuess ? `$${msg.data.spinValue} per letter` : 'WAITING FOR HOST…';
+    if (gameStarted) {
+      document.getElementById('waiting').classList.add('hidden');
+      applyScores(msg.data);
+      if (msg.data.spinValue !== undefined) {
+        document.getElementById('spinValueDisplay').textContent =
+          msg.data.canGuess ? `$${msg.data.spinValue} per letter` : 'WAITING FOR HOST…';
+      }
     }
   });
 
