@@ -75,6 +75,7 @@
 </div>
 <!-- WAITING -->
 <div class="waiting-overlay" id="waiting">
+  <button onclick="toggleFullscreen()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.07);border:1px solid #1a2e50;color:#aabbcc;border-radius:6px;padding:6px 12px;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;cursor:pointer" id="fsBtn">⛶ Fullscreen</button>
   <div class="wt-icon">⚡</div>
   <div class="wt-title">WHEEL OF FORTUNE</div>
   <div class="wt-brand">Life.Church — EMP Training</div>
@@ -357,8 +358,8 @@ function toggleFullscreen() {
   else document.exitFullscreen().catch(()=>{});
 }
 document.addEventListener('fullscreenchange', () => {
-  const btn=document.querySelector('.fullscreen-btn');
-  if (btn) btn.textContent=document.fullscreenElement?'✕ Exit Fullscreen':'⛶ Fullscreen';
+  const label = document.fullscreenElement ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+  document.querySelectorAll('.fullscreen-btn, #fsBtn').forEach(b => b.textContent = label);
 });
 
 initAbly();
