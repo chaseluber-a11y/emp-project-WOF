@@ -63,7 +63,7 @@
   <div class="wt-icon">⚡</div>
   <div class="wt-title">WHEEL OF FORTUNE</div>
   <div class="wt-brand">Life.Church — EMP Training</div>
-  <div class="wt-sub">Waiting for host to begin…</div>
+  <div class="wt-sub" id="waitSub">👆 Tap screen to activate audio</div>
 </div>
 <div class="solved-flash" id="solvedFlash">
   <div class="sf-title">🎉 SOLVED!</div>
@@ -250,24 +250,26 @@ function handleAudioCue(d) {
 
 
 
-// Pre-prime video on page load — plays+pauses silently so browser
-// allows autoplay when host triggers it via Ably
-window.addEventListener('load', () => {
+// Track whether the user has interacted with this page
+// (required by browsers before allowing audio/video with sound)
+let userInteracted = false;
+
+document.addEventListener('click', () => {
+  if (userInteracted) return;
+  userInteracted = true;
+  document.getElementById('waitSub').textContent = 'Waiting for host to start…';
+  // Pre-load and prime the video now that we have a user gesture
   const vid = document.getElementById('introVideo');
   if (!vid) return;
-  vid.muted = true;
+  vid.muted = false;
   vid.preload = 'auto';
   vid.load();
-  // Small timeout so page has fully rendered before we attempt play
-  setTimeout(() => {
-    const p = vid.play();
-    if (p) p.then(() => {
-      vid.pause();
-      vid.currentTime = 0;
-      vid.muted = false; // restore — board plays with audio
-    }).catch(() => {}); // silently ignore if browser still blocks
-  }, 500);
-});
+  // Play+pause to register video with browser — unlocks future unmuted playback
+  vid.play().then(() => {
+    vid.pause();
+    vid.currentTime = 0;
+  }).catch(() => {});
+}, { once: false });
 
 function revealGame() {
   const ov  = document.getElementById('videoOverlay');
@@ -277,19 +279,22 @@ function revealGame() {
     gameStarted = true;
     ov.classList.remove('show');
     document.getElementById('waiting').classList.add('hidden');
-    // Apply any state that arrived while waiting
     if (lastState) applyState(lastState);
   }
 
-  // Show video over waiting screen (don't hide waiting yet)
   ov.classList.add('show');
   vid.currentTime = 0;
   vid.volume = 1;
-  vid.muted = false;
+  vid.muted = !userInteracted; // muted only if user never tapped
   vid.play().then(() => {
     vid.onended = afterVideo;
+    // If it started muted because no gesture, unmute now
+    // (some browsers allow unmuting after play starts)
+    if (vid.muted) {
+      setTimeout(() => { vid.muted = false; }, 100);
+    }
   }).catch(() => {
-    afterVideo();
+    afterVideo(); // video blocked entirely — skip to game
   });
 }
 
