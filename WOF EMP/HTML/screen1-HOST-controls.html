@@ -317,7 +317,7 @@ function initAbly() {
     if (typeof d.canGuess !== 'undefined') {
       G.canGuess = d.canGuess;
       document.getElementById('btnGuess').disabled = !G.canGuess;
-      document.getElementById('btnVowel').disabled = !G.canGuess;
+      // btnVowel managed by updateUI independently of canGuess
       document.getElementById('btnSolve').disabled = !G.canGuess;
     }
     if (typeof d.team !== 'undefined') G.team = d.team;
@@ -410,8 +410,9 @@ function buyVowel() {
     document.getElementById('btnGuess').disabled = true;
     document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = false;
-    setStatus(`🔤 Bought "${letter}" for $${VOWEL_COST} — appears ${count}x! (No earnings for vowels)`);
-    publishAudioCue('sfx', {name: 'ding'});
+    setStatus(`🔤 Bought "${letter}" for $${VOWEL_COST} — appears ${count}x!`);
+    // Stop theme, let board stagger-reveal with dings — same as a regular correct letter
+    publishAudioCue('music-stop');
     if (isSolved()) { revealAll(); updateUI(); showSolved(`${G.team===1?G.t1name:G.t2name} revealed the whole puzzle!`); }
     else broadcast();
   } else {
@@ -421,6 +422,8 @@ function buyVowel() {
     document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = true;
     setStatus(`🔤 Bought "${letter}" for $${VOWEL_COST} — not in the puzzle! Turn passes.`);
+    // Stop theme, play wrong sound, pass turn — same as a regular wrong letter
+    publishAudioCue('music-stop');
     publishAudioCue('sfx', {name: 'wrong'});
     broadcast();
     setTimeout(() => switchTeam(), 1400);
@@ -446,7 +449,6 @@ function guessLetter() {
     renderUsed(); updateUI();
     G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
-    document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = false;
     setStatus(`✅ "${letter}" appears ${count}x — ${G.team===1?G.t1name:G.t2name} earns $${earn.toLocaleString()}!`);
     publishAudioCue('music-stop');
@@ -456,7 +458,6 @@ function guessLetter() {
   } else {
     renderUsed(); G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
-    document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = true;
     setStatus(`❌ No "${letter}" in the puzzle — turn passes to ${G.team===1?G.t2name:G.t1name}!`);
     publishAudioCue('music-stop');
@@ -476,7 +477,6 @@ function trySolve() {
   } else {
     G.canGuess = false;
     document.getElementById('btnGuess').disabled = true;
-    document.getElementById('btnVowel').disabled = true;
     document.getElementById('btnSolve').disabled = true;
     setStatus(`❌ Wrong solve — turn passes!`);
     publishAudioCue('music-stop');
@@ -501,7 +501,6 @@ function revealAll() { [...G.phrase].forEach(c => { if (c!==' ') G.revealed.add(
 function switchTeam() {
   G.team = G.team===1 ? 2 : 1; G.canGuess = false;
   document.getElementById('btnGuess').disabled = true;
-  document.getElementById('btnVowel').disabled = true;
   document.getElementById('btnSolve').disabled = true;
   updateUI(); setStatus(`${G.team===1?G.t1name:G.t2name}'s turn — spin the wheel!`); broadcast();
 }
@@ -531,13 +530,14 @@ function updateUI() {
   document.getElementById('ss2round').textContent = '$'+G.t2round.toLocaleString();
   document.getElementById('ss1').classList.toggle('active', G.team===1);
   document.getElementById('ss2').classList.toggle('active', G.team===2);
-  // Vowel button — only enabled when canGuess AND team can afford it
+  // Vowel button — available any time a puzzle is loaded and team can afford it
+  // No spin required since vowels don't earn money
   const vowelBtn = document.getElementById('btnVowel');
   const vowelNote = document.getElementById('vowelNote');
-  if (G.canGuess && canAffordVowel()) {
+  if (G.phrase && canAffordVowel()) {
     vowelBtn.disabled = false;
     vowelNote.textContent = '';
-  } else if (G.canGuess && !canAffordVowel()) {
+  } else if (G.phrase && !canAffordVowel()) {
     vowelBtn.disabled = true;
     vowelNote.textContent = `⚠ Need $${VOWEL_COST} (round + bank) to buy a vowel`;
   } else {
