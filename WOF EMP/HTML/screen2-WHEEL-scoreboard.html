@@ -57,25 +57,28 @@
   .wt-sub{font-size:14px;letter-spacing:5px;color:#1e3050;animation:blink 1.8s ease infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
   .wt-brand{font-size:13px;letter-spacing:4px;color:#1a2e46}
+
+
   /* VIDEO OVERLAY */
   .video-overlay{position:fixed;inset:0;z-index:200;background:#000;display:none;align-items:center;justify-content:center}
   .video-overlay.show{display:flex}
   .video-overlay video{width:100%;height:100%;object-fit:contain}
+
 </style>
 </head>
 <body>
+<!-- VIDEO INTRO (muted on wheel) -->
+<div class="video-overlay" id="videoOverlay">
+  <video id="introVideo" muted playsinline>
+    <source src="../video/intro.mp4" type="video/mp4">
+  </video>
+</div>
 <!-- WAITING -->
 <div class="waiting-overlay" id="waiting">
   <div class="wt-icon">⚡</div>
   <div class="wt-title">WHEEL OF FORTUNE</div>
   <div class="wt-brand">Life.Church — EMP Training</div>
-  <div class="wt-sub" id="waitSub">Tap anywhere to enable audio</div>
-</div>
-<!-- VIDEO INTRO -->
-<div class="video-overlay" id="videoOverlay">
-  <video id="introVideo" muted playsinline>
-    <source src="video/intro.mp4" type="video/mp4">
-  </video>
+  <div class="wt-sub" id="waitSub">Waiting for host to start…</div>
 </div>
 <div class="header">
   <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
@@ -283,8 +286,8 @@ let musicVol = 0.6;
 let sfxVol = 0.9;
 
 const WHEEL_SFX = {
-  bankrupt:  'audio/bankrupt.mp3',
-  lose_turn: 'audio/wrong.mp3',
+  bankrupt:  '../audio/bankrupt.mp3',
+  lose_turn: '../audio/wrong.mp3',
 };
 
 function playWheelSFX(name) {
@@ -318,56 +321,39 @@ function handleAudioCue(d) {
 }
 
 
-// Unlock audio/video on first user interaction (required by browsers)
-let audioUnlocked = false;
-document.addEventListener('click', function unlockAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  // Preload and prime the video so it plays instantly when triggered
-  const vid = document.getElementById('introVideo');
-  if (vid) {
-    vid.load();
-    vid.muted = true;
-    vid.play().then(() => { vid.pause(); vid.currentTime = 0; vid.muted = true; }).catch(()=>{});
-  }
-  document.getElementById('waitSub').textContent = 'Waiting for host to start…';
-}, {once: true});
 
-function showIntroVideo() {
+// Pre-prime the video on page load so autoplay is unlocked when host triggers it
+window.addEventListener('load', () => {
+  const vid = document.getElementById('introVideo');
+  if (!vid) return;
+  vid.muted = true;
+  vid.load();
+  // Attempt silent play+pause to register with browser autoplay policy
+  const p = vid.play();
+  if (p) p.then(() => { vid.pause(); vid.currentTime = 0; }).catch(() => {});
+});
+
+function revealGame() {
   const ov  = document.getElementById('videoOverlay');
   const vid = document.getElementById('introVideo');
 
-  function startGame() {
+  function afterVideo() {
     gameStarted = true;
     ov.classList.remove('show');
     document.getElementById('waiting').classList.add('hidden');
-    // Apply any state that arrived while waiting
-    if (cachedState && cachedState.phrase) {
-      applyScores(cachedState);
-    }
+    if (cachedState && cachedState.phrase) applyScores(cachedState);
   }
 
-  // Show video overlay (still over waiting screen)
+  document.getElementById('waiting').classList.add('hidden');
   ov.classList.add('show');
-
-  // Try to play — browsers may block autoplay without user gesture
-  // The Ably message IS triggered by the host clicking a button, but
-  // the browser sees it as async so we need to handle the block gracefully
-  const playPromise = vid.play();
-  if (playPromise !== undefined) {
-    playPromise.then(() => {
-      // Playing fine
-      vid.onended = () => startGame();
-    }).catch(() => {
-      // Autoplay blocked — skip straight to game after short delay
-      console.warn('Video autoplay blocked — skipping intro');
-      setTimeout(() => startGame(), 500);
-    });
-  } else {
-    vid.onended = () => startGame();
-    // Fallback if video fails to load at all
-    setTimeout(() => { if (gameStarted === false) startGame(); }, 15000);
-  }
+  vid.currentTime = 0;
+  vid.muted = true; // wheel is always muted
+  vid.play().then(() => {
+    vid.onended = afterVideo;
+  }).catch(() => {
+    // Autoplay still blocked — skip video, go straight to game
+    afterVideo();
+  });
 }
 
 function initAbly() {
@@ -394,7 +380,7 @@ function initAbly() {
   channel.subscribe('audio-cue', (msg) => { handleAudioCue(msg.data); });
 
   // Intro video trigger from host
-  channel.subscribe('intro-start', () => { showIntroVideo(); });
+  channel.subscribe('intro-start', () => { revealGame(); });
 }
 
 function toggleFullscreen() {
