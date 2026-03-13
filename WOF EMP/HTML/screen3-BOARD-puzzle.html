@@ -218,16 +218,32 @@ function applyState(data) {
 
 
 // ============================================================
-// AUDIO — Board plays: ding, wrong, solved + intro video (with audio)
+// AUDIO — Board plays: ding, wrong, solved + theme music
 // ============================================================
 let isMuted = false;
 let sfxVol = 0.9;
+let themeAudio = null;
+let musicVol = 0.6;
+
+function startTheme(file) {
+  if (isMuted) return;
+  stopTheme();
+  themeAudio = new Audio(file);
+  themeAudio.loop = true;
+  themeAudio.volume = musicVol;
+  themeAudio.play().catch(()=>{});
+}
+function stopTheme() {
+  if (themeAudio) { themeAudio.pause(); themeAudio.currentTime = 0; themeAudio = null; }
+}
 
 const BOARD_SFX = {
-  ding:    '../audio/ding.mp3',
-  wrong:   '../audio/wrong.mp3',
-  solved:  '../audio/solved.mp3',
-  reveal:  '../audio/reveal.mp3',
+  ding:     '../audio/ding.mp3',
+  wrong:    '../audio/wrong.mp3',
+  solved:   '../audio/solved.mp3',
+  reveal:   '../audio/reveal.mp3',
+  spin:     '../audio/spin.mp3',
+  bankrupt: '../audio/bankrupt.mp3',
 };
 
 function playBoardSFX(name) {
@@ -240,12 +256,38 @@ function playBoardSFX(name) {
 function handleAudioCue(d) {
   switch (d.cue) {
     case 'sfx':
-      // Skip 'ding' — board fires its own staggered dings per tile
+      // Skip ding — board fires its own staggered dings per tile
       if (d.name !== 'ding') playBoardSFX(d.name);
       break;
-    case 'mute':        isMuted = d.muted; break;
-    case 'set-sfx-vol': sfxVol = d.vol; break;
+    case 'sfx-wheel':
+      // Sounds that originated from wheel events (spin, bankrupt, lose turn)
+      playBoardSFX(d.name);
+      break;
+    case 'theme-start':
+      startTheme('../audio/theme.mp3');
+      break;
+    case 'music-stop':
+      stopTheme();
+      break;
+    case 'solve-reveal':
+      solveReveal();
+      break;
+    case 'mute':
+      isMuted = d.muted;
+      if (isMuted) stopTheme();
+      break;
+    case 'set-music-vol': musicVol = d.vol; if (themeAudio) themeAudio.volume = d.vol; break;
+    case 'set-sfx-vol':   sfxVol = d.vol; break;
   }
+}
+
+function solveReveal() {
+  // Instantly reveal all tiles with no dings, then play solved sound
+  if (!lastState) return;
+  const phrase = (lastState.phrase||'').toUpperCase();
+  const allLetters = new Set([...phrase].filter(c => c !== ' '));
+  buildBoard(phrase, allLetters, null);
+  playBoardSFX('solved');
 }
 
 
