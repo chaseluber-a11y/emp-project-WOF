@@ -87,6 +87,7 @@
 const ABLY_KEY = 'leOFKA.nbOkGA:CknTFn0f2ehAmi88tbNF0Hj5wY_ld-XuxHnOjbKkYTg';
 
 let prevRevealed = new Set(), prevPhrase = '';
+let gameStarted = false;
 
 // Build the board structure — tiles start hidden, revealed ones shown immediately
 // For staggered reveals, we mark newly revealed tiles with data-new and animate them in sequence
@@ -164,6 +165,7 @@ function buildBoard(phrase, revealed, newLetters) {
 let solvedTimer = null;
 
 function applyState(data) {
+  if (!gameStarted) return;
   document.getElementById('waiting').classList.add('hidden');
   const phrase = (data.phrase||'').toUpperCase();
   const revealed = new Set(data.revealed||[]);
@@ -242,17 +244,48 @@ function handleAudioCue(d) {
   }
 }
 
+
+// Unlock audio/video on first user interaction (required by browsers)
+let audioUnlocked = false;
+document.addEventListener('click', function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  // Preload and prime the video so it plays instantly when triggered
+  const vid = document.getElementById('introVideo');
+  if (vid) {
+    vid.load();
+    vid.muted = true;
+    vid.play().then(() => { vid.pause(); vid.currentTime = 0; vid.muted = false; }).catch(()=>{});
+  }
+  document.getElementById('waitSub').textContent = 'Waiting for host to start…';
+}, {once: true});
+
 function showIntroVideo() {
-  document.getElementById('waiting').classList.add('hidden');
   const ov  = document.getElementById('videoOverlay');
   const vid = document.getElementById('introVideo');
+
+  function startGame() {
+    gameStarted = true;
+    ov.classList.remove('show');
+    document.getElementById('waiting').classList.add('hidden');
+  }
+
   ov.classList.add('show');
   vid.volume = 1;
-  vid.play().catch(()=>{});
-  vid.onended = () => {
-    ov.classList.remove('show');
-    // game starts — state message from host will populate board
-  };
+
+  const playPromise = vid.play();
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      vid.onended = () => startGame();
+    }).catch(() => {
+      // Autoplay blocked — skip intro
+      console.warn('Video autoplay blocked — skipping intro');
+      setTimeout(() => startGame(), 500);
+    });
+  } else {
+    vid.onended = () => startGame();
+    setTimeout(() => { if (!gameStarted) startGame(); }, 15000);
+  }
 }
 
 function initAbly() {
