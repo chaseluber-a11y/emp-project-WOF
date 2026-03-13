@@ -101,7 +101,7 @@
   <div class="team-block active" id="tb1">
     <div class="team-stripe s1"></div>
     <div class="team-data">
-      <div class="team-name-row"><span class="team-name t1n">Team 1</span><span class="turn-pill">THEIR TURN</span></div>
+      <div class="team-name-row"><span class="team-name t1n" id="wt1name">Team 1</span><span class="turn-pill">THEIR TURN</span></div>
       <div class="team-total" id="t1total">$0</div>
       <div class="team-round">Round: <span id="t1round">$0</span></div>
     </div>
@@ -111,7 +111,7 @@
   <div class="team-block" id="tb2">
     <div class="team-stripe s2"></div>
     <div class="team-data">
-      <div class="team-name-row"><span class="team-name t2n">Team 2</span><span class="turn-pill">THEIR TURN</span></div>
+      <div class="team-name-row"><span class="team-name t2n" id="wt2name">Team 2</span><span class="turn-pill">THEIR TURN</span></div>
       <div class="team-total" id="t2total">$0</div>
       <div class="team-round">Round: <span id="t2round">$0</span></div>
     </div>
@@ -267,6 +267,8 @@ function bankRound(t) {
 
 function applyScores(data) {
   if (typeof data.team !== 'undefined') { currentTeam=data.team; updateScoreboard(); }
+  if (data.t1name) document.getElementById('wt1name').textContent = data.t1name;
+  if (data.t2name) document.getElementById('wt2name').textContent = data.t2name;
   document.getElementById('t1total').textContent='$'+(data.t1total||0).toLocaleString();
   document.getElementById('t2total').textContent='$'+(data.t2total||0).toLocaleString();
   document.getElementById('t1round').textContent='$'+(data.t1round||0).toLocaleString();
